@@ -1,17 +1,29 @@
-from breezypythongui import EasyFrame
+import tkinter as tk
+from tkinter import PhotoImage
 
-class Window1(EasyFrame):
-    def __init__ (self):
-        #initializes the first window
-        EasyFrame.__init__ (self, width= 400, height= 400, title = "Pizza Palace Ordering", resizable= False)
-        EasyFrame.addCanvas(background = "pizza_bg.jpg")
-        self.Heading = self.addLabel(text= "Welcome to the Pizza Palace!", row = 0, column = 2, columnspan = 2)
-class Window2(EasyFrame):
-    def __init__ (self):
-        #initializes the second window, though it is not created until needed.
-        EasyFrame.__init__(self, title = "Temp Title", height = 400, width= 400, resizable= False) 
-def main ():
-    Window1().mainLoop()
+def openSecondWindow():
+    # Create a new top-level window
+    secondWindow = tk.Toplevel(root)
+    secondWindow.title("Second Window")
+    
+    # Add some content to the second window
+    label = tk.Label(secondWindow, text="This is the second window")
+    label.pack(padx=20, pady=20)
 
-if __name__== "__main__":
-    main()
+# Create the main application window
+root = tk.Tk()
+root.title("Pizza Palace Ordering")
+root.geometry("612x430")
+# Load the background image (make sure the extension is correct)
+background_image = PhotoImage(file="pizza_bg.png")  # Adjust file extension as needed
+
+# Create a label with the image
+background_label = tk.Label(root, image=background_image)
+background_label.place(relwidth=1, relheight=1)  # Fill the entire window
+
+# Add a button to the main window
+button = tk.Button(root, text="Open Second Window", command=openSecondWindow)
+button.pack(padx=20, pady=20)  # Use pack() to display the button
+
+# Run the application
+root.mainloop()
