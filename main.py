@@ -54,7 +54,11 @@ class MainWindow(BaseWindow):
         
         #overview window
         self.overview_frame = tk.Frame(root)
-        
+
+        #checkout button - not created until the cart is closed. 
+        self.checkout_button = tk.Button(root, text = "Proceed to Checkout", command = self.open_checkout)
+        self.summary_mode = None 
+
     def buttonRemoval(self):
         #gets rid of the pickup and delivery buttons when one has been selected
         self.delivery_button.destroy()
@@ -64,6 +68,7 @@ class MainWindow(BaseWindow):
         #calls for the creation of the delivery window, prompt for address, calls for buttonRemoval
         delivery_window = tk.Toplevel(self.root)
         DeliveryWindow(delivery_window, self)
+        self.summary_mode = "delivery"
         delivery_window.grab_set()
         self.buttonRemoval()
         
@@ -109,6 +114,15 @@ class MainWindow(BaseWindow):
 
     def reenable_cart_button(self):
         self.manage_items_button.config(state = tk.NORMAL)
+        self.checkout_button.place(relx = 0.9, rely = 0.5, anchor = "center")
+        self.checkout_button.config (state = tk.NORMAL)
+
+    def open_checkout(self):
+        summary_text = self.summary_label.cget("text")
+        
+        CheckoutWindow(self.root, self.cart, summary_text, self.summary_mode)
+        
+
 class DeliveryWindow(BaseWindow):
 
     #defines the delivery window, inheriting from the basewindow class
@@ -184,6 +198,55 @@ class PickupWindow(BaseWindow):
             self.main_window.update_summary("pickup", name_on_order, contact_number)
             self.root.destroy()
         self.main_window.manage_items_button.config(state=tk.NORMAL)
+
+
+class CheckoutWindow(tk.Toplevel):
+    def __init__(self,root,cart,summary_text, summary_mode):
+        super().__init__(root)
+        self.title("Checkout")
+        self.geometry("400x500")
+
+        tk.Label(self, text = "Order Summary", font = ("Arial",16)).pack(pady=10)
+
+
+        summary_label = tk.Label(self, text =summary_text)
+        summary_label.pack(pady=5)
+
+        #Calculate the subtotal
+        subtotal = sum(price for price, name, note, _ in cart)
+        tax = subtotal *0.07
+        total = subtotal + tax 
+
+
+        for price, name, note, _ in cart:
+            display_text = f"{name} - ${price:.2f}"
+            if note:
+                display_text += f" (Note: {note})"
+            item_label = tk.Label(self, text = display_text)
+            item_label.pack()
+
+        
+
+        #display subtotal, tax, then total
+        tk.Label(self, text=f"Subtotal: ${subtotal}").pack(pady=5)
+        if summary_mode == "delivery":
+            delivery_fee = 6.00
+            tk.Label(self, text=f"Delivery Fee - ${delivery_fee:.2f}").pack()
+            subtotal += delivery_fee  # Add delivery fee to subtotal
+            total = subtotal + tax  # Recalculate total with delivery fee
+        tk.Label(self, text=f"Tax: ${tax:.2f}").pack(pady=5)
+        tk.Label(self, text=f"Total: ${total:.2f}").pack(pady=10)
+
+        tk.Button(self, text="Confirm Order", command=self.confirm_order).pack(pady=5)
+        tk.Button(self, text="Cancel", command=self.cancel_order).pack(pady=5)
+
+
+    def confirm_order(self):
+        messagebox.showinfo("Order Confirmed", "Your order has been confirmed!")
+        self.destroy()
+    
+    def cancel_order(self):
+        self.destroy()
 
 class CartView(tk.Toplevel):
     def __init__(self, root, cart, main_window):
