@@ -35,24 +35,26 @@ class MainWindow(BaseWindow):
     #the main window, which holds the order summary. 
     def __init__(self, root):
         super().__init__(root, "Pizza Palace Ordering", 612, 430, "pizza_bg.png")
-
+        self.cart=[]
         header_label = tk.Label(root, text="Welcome to the Pizza Palace!", relief="sunken")
         header_label.place(relx = 0.5, rely= 0.1, anchor= "center")
 
         self.delivery_button = tk.Button(root, text="Delivery", command= self.deliveryButton)
-        self.delivery_button.place(relx= 0.5, rely= 0.4, anchor = "center")
+        self.delivery_button.place(relx= 0.5, rely= 0.3, anchor = "center")
 
         self.pickup_button = tk.Button(root, text = "Pickup", command = self.pickupButton)
-        self.pickup_button.place(relx= 0.5, rely=0.6, anchor = "center")
+        self.pickup_button.place(relx= 0.5, rely=0.7, anchor = "center")
 
         self.summary_label= tk.Label(root, text="", relief= "sunken")
         self.summary_label.place(relx= 0.9, rely= 0.1, anchor="ne")
 
         #button to manage items
-        self.manage_items_button = tk.Button(root, text = "manage items", command = self.open_cart_view, state = "disabled")
+        self.manage_items_button = tk.Button(root, text = "Open Cart", command = self.open_cart_view, state = "disabled")
         self.manage_items_button.place(relx = 0.5, rely= 0.8, anchor = "center")
         
-
+        #overview window
+        self.overview_frame = tk.Frame(root)
+        
     def buttonRemoval(self):
         #gets rid of the pickup and delivery buttons when one has been selected
         self.delivery_button.destroy()
@@ -80,10 +82,35 @@ class MainWindow(BaseWindow):
             summary = f"Pickup for:\n{args[0]}\n Contact: {args[1]}"
         self.summary_label.config(text=summary)
 
-    def open_cart_view(self):
-        CartView(self.root)
+    def create_overview(self):
+        self.overview_frame.place(relheight= 0.3, relwidth = 0.3, relx = 0.5, rely= 0.5, anchor= "center")
 
+        #clear existing content in the overview
+        for widget in self.overview_frame.winfo_children():
+            widget.destroy()
+
+        #create overview content
+        overview_label= tk.Label (self.overview_frame, text = "Order Summary", font=("Arial", 16))
+        overview_label.pack(pady=10)
+
+        for price, name, note, _ in self.cart:
+            display_text= f"{name} - ${price:.2f}"
+            if note:
+                display_text+= f" (Note: {note})"
+            item_label=tk.Label(self.overview_frame, text = display_text)
+            item_label.pack()
+
+        total_label= tk.Label(self.overview_frame, text = f"Total: ${sum(item[0] for item in self.cart):.2f}")
+        total_label.pack()
+
+    def open_cart_view(self):
+        CartView(self.root, self.cart, self)
+        self.manage_items_button.config(state = tk.DISABLED)
+
+    def reenable_cart_button(self):
+        self.manage_items_button.config(state = tk.NORMAL)
 class DeliveryWindow(BaseWindow):
+
     #defines the delivery window, inheriting from the basewindow class
     def __init__(self,root, main_window):
         super().__init__(root, "Enter Delivery Address", 300, 250)
@@ -159,10 +186,15 @@ class PickupWindow(BaseWindow):
         self.main_window.manage_items_button.config(state=tk.NORMAL)
 
 class CartView(tk.Toplevel):
-    def __init__(self, root):
+    def __init__(self, root, cart, main_window):
         super().__init__(root)
         self.title("Cart View")
-        self.geometry("400x300")
+        self.geometry("400x500")
+        self.cart = cart
+        self.total = 0
+        self.main_window=main_window
+
+        self.cart_with_ids = [(price, name, note, i) for i, (price, name, note, _) in enumerate(self.cart)]
 
         self.item_frame = tk.Frame(self)
         self.item_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -180,86 +212,114 @@ class CartView(tk.Toplevel):
 
         self.content_frame.bind("<Configure>", lambda e: self.canvas.config(scrollregion=self.canvas.bbox("all")))
 
+        #initialize total label here
+        self.total_label = tk.Label(self, text="Total: $0.00")
+        self.total_label.pack(side=tk.BOTTOM, pady=5)
+        #add new item button
         self.add_item_button = tk.Button(self, text="Add New Item", command=self.open_add_to_cart)
         self.add_item_button.pack(side=tk.BOTTOM, pady=10)
 
-        self.items = []
+        self.update_items()
+
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def on_close(self):
+        self.main_window.reenable_cart_button()
+        self.main_window.create_overview()
+        self.destroy()
+
+    def update_items(self):
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()
+        self.update_cart()
+    def update_cart(self):
+        for widget in self.content_frame.winfo_children():
+            widget.destroy()  # Clear existing items
+
+        self.total = 0  # Reset total to 0 for recalculation
+        for price, name, note, item_id in self.cart_with_ids:
+            display_text = f"{name} - ${price:.2f}"
+            if note:
+                display_text += f" (Note: {note})"
+            item_frame = tk.Frame(self.content_frame)
+            item_frame.pack(fill=tk.X, pady=5)
+            tk.Label(item_frame, text=display_text).pack(side=tk.LEFT, padx=5)
+            remove_button = tk.Button(item_frame, text="X", command=lambda id= item_id: self.remove_item(id))
+            remove_button.pack(side=tk.RIGHT, padx=5)
+            self.total += price
+        self.total_label.config(text=f"Total: ${self.total:.2f}")
 
     def open_add_to_cart(self):
-        AddToCart(self)
+        AddToCart(self,self)
+    
+    def remove_item(self, item_id):
+        self.cart_with_ids = [item for item in self.cart_with_ids if item[3] != item_id]
+        self.update_items()
+        self.main_window.cart = [item for i, item in enumerate(self.main_window.cart) if i != item_id]
+        self.main_window.create_overview()
 
-    def add_item_to_cart(self, item_name, price):
-        item_frame = tk.Frame(self.content_frame)
-        item_frame.pack(fill=tk.X, pady=5)
-
-        item_label = tk.Label(item_frame, text=f"{item_name} - ${price:.2f}")
-        item_label.pack(side=tk.LEFT, padx=5)
-
-        remove_button = tk.Button(item_frame, text="Remove", command=lambda: self.remove_item(item_frame))
-        remove_button.pack(side=tk.RIGHT, padx=5)
-
-        self.items.append(item_frame)
-        self.canvas.yview_moveto(1)
-
-    def remove_item(self, item_frame):
-        if item_frame in self.items:
-            self.items.remove(item_frame)
-            item_frame.destroy()
-            for idx, item in enumerate(self.items):
-                item.pack_configure(pady=(5 if idx == 0 else 2))
+    def add_item_to_cart(self, item_name, price, note, item_id):
+        self.cart_with_ids.append((price, item_name, note, item_id))
+        self.update_items()
+        self.main_window.cart.append((price, item_name, note, item_id))
+        self.main_window.create_overview()
 
 
-class AddToCart(BaseWindow):
-    def __init__(self, cart_view):
-        super().__init__(tk.Toplevel(cart_view), "Add to Cart", 400, 300)
+class AddToCart(tk.Toplevel):
+    def __init__(self, root, cart_view):
+        super().__init__(root)
+        self.title("Add to Cart")
+        self.geometry("500x400")
         self.cart_view = cart_view
-
-        # Define the menu items, their prices, and their ingredients using a dict
         self.menu_items = {
             "Margherita Pizza": (10.00, "Tomato, Mozzarella, Basil"),
             "Pepperoni Pizza": (12.00, "Tomato, Mozzarella, Pepperoni"),
-            "Veggie Pizza": (11.00, "Tomato, Mozzarella, Bell Peppers, Onions, Mushrooms"),
-            # Add more items as needed
+            "Veggie Pizza": (11.00, "Tomato, Mozzarella, Bell Pepper, Onion, Mushroom"),
+            "Meat Lovers Pizza": (15.00, "Tomato, Mozzerella, Sausage, Ham, Bacon, Pepperoni, Ground Beef" ),
+            "Buffalo Chicken Pizza": (14.00, "Buffalo-ranch, Mozzerlla, Onion, Chicken"),
+            "Philly Cheesesteak Pizza": (14.00, "Ranch, Mozzerella, 3 Cheese, Steak, Green Peppers, Onions"),
+            "6 Cheese Pizza" : (11.00, "Tomato, Parmesean, Romano, Mozzerella, Provolone, Fontina, Asiago"),
+            "Burger Pizza" : (13.00, "'Burger Sauce', Mozzerella, Beef, Pickle, Tomato"),
+            "The Works" : (18.00, "Tomato, Mozzerella, Italian Sausage, Canadian Bacon, Mushroom, Onion, Green Pepper, Black Olive, Pepperoni"),
+            "BBQ Chicken Pizza" : (14.00, "BBQ, Mozzerella, Chicken, Bacon, Onion"),
+            "Hawaiian Pizza" : (12.00, "Tomato, Mozzerella, Canadian Bacon, Bacon, Pineapple, 3 Cheese")
         }
 
-        # Create a frame for the dropdown and buttons
-        self.frame = tk.Frame(self.root)
+        self.frame = tk.Frame(self)
         self.frame.pack(fill=tk.BOTH, padx=10, pady=10)
 
-        # Create dropdown for selecting an item
         tk.Label(self.frame, text="Select Item:").pack(pady=5)
         self.item_menu = ttk.Combobox(self.frame, values=list(self.menu_items.keys()))
-        self.item_menu.set(next(iter(self.menu_items)))  # Set default value to the first item
+        self.item_menu.set(next(iter(self.menu_items)))
         self.item_menu.pack(pady=5)
 
-        # Add button to add selected item
+        tk.Label(self.frame, text="Note:").pack(pady=5)
+        self.note_entry = tk.Entry(self.frame)
+        self.note_entry.pack(pady=5)
+
         add_button = tk.Button(self.frame, text="Add Item", command=self.add_item)
         add_button.pack(pady=5)
 
-        # Listbox to display cart items
-        self.cart_listbox = tk.Listbox(self.frame, width=50, height=10)
-        self.cart_listbox.pack(pady=10)
-
-        # Label to display total price
-        self.total_label = tk.Label(self.frame, text="Total: $0.00")
-        self.total_label.pack(pady=5)
-
-        # Add a button to proceed or exit
         proceed_button = tk.Button(self.frame, text="Proceed", command=self.proceed)
         proceed_button.pack(pady=10)
 
     def add_item(self):
-        item_name = self.item_menu.get()  # Get selected item from Combobox
+        item_name = self.item_menu.get()
+        note = self.note_entry.get()
         if item_name in self.menu_items:
             price, _ = self.menu_items[item_name]
-            self.cart_view.add_item_to_cart(item_name, price)
+            item_id = len(self.cart_view.cart_with_ids)
+            self.cart_view.add_item_to_cart(item_name, price, note, item_id)
+            self.update_cart()
+            self.destroy()
         else:
             messagebox.showerror("Item Error", "Selected item is not available.")
 
-    def proceed(self):
-        # Handle proceeding logic (if needed)
-        self.root.destroy()
+    def update_cart(self):
+        self.cart_view.update_items()  # Call CartView's update_items method
 
+    def proceed(self):
+        self.destroy()
 
 
 # Create the main application window
