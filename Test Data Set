@@ -1,0 +1,38 @@
+Structure Set:
+    Mode:
+    * Street, City, zip - if delivery
+    * Name, contact number - if pickup 
+    Cart items:
+    Cart itmes with notes:
+    Cart items to be added and removed:
+
+
+Order 1: 
+    pickup
+    John Johnson, 5555555555
+    Margherita Pizza (1), Margherita Pizza (2)
+    Hawaiian Pizza (1, no Pineapple)
+    BBQ Pizza (1-0)
+
+Order 2:
+    delivery
+    1600 Pennyslyvania Avenue, Washington, 205000
+    Pepperoni Pizza (1), Pepperoni Pizza (2), Pepperoni Pizza (3), Pepperoni Pizza (4)
+    Pepperoni Pizza (1, No Pepperoni)
+    N/A
+
+Order 3:
+    pickup
+    Carl Carlson, 555-555-5559
+    6 Cheese Pizza (1), Buffalo Chicken Pizza
+    The Works (no olives), 
+    Margerhita Pizza (1-0)
+
+Work log:
+background in main menu not appearing- resolved
+background not resizing - resolved 
+Icon image was not found - resolved (VScode CWD is not defaulted to files location)
+Total not updating - resolved
+Viewing a note via note button duplicates add new item button - resolved - note button eventually removed, note integrated to item
+Removing one item, removes all instances of the item - resolved
+Checkout Button not appearing - resolved

@@ -21,6 +21,7 @@ class BaseWindow:
             self.root.bind("<Configure>", self.on_resize)
 
     def update_background_image(self):
+        #resizes the background to fit the window, should it be resized
         width = self.root.winfo_width()
         height = self.root.winfo_height()
         resized_image = self.original_image.resize((width, height), Image.Resampling.LANCZOS)
@@ -28,7 +29,7 @@ class BaseWindow:
         self.background_label.config(image=self.background_image)
         self.background_label.image = self.background_image  #
 
-    def on_resize(self, event):
+    def on_resize(self):
         self.update_background_image()
 
 class MainWindow(BaseWindow):
@@ -38,17 +39,17 @@ class MainWindow(BaseWindow):
         self.cart=[]
         header_label = tk.Label(root, text="Welcome to the Pizza Palace!", relief="sunken")
         header_label.place(relx = 0.5, rely= 0.1, anchor= "center")
-
+        #button to declare the order is for delivery, calls for the delivery window
         self.delivery_button = tk.Button(root, text="Delivery", command= self.deliveryButton)
         self.delivery_button.place(relx= 0.5, rely= 0.3, anchor = "center")
-
+        #button to declare the order is for pickup, calls for the pickup window
         self.pickup_button = tk.Button(root, text = "Pickup", command = self.pickupButton)
         self.pickup_button.place(relx= 0.5, rely=0.7, anchor = "center")
 
         self.summary_label= tk.Label(root, text="", relief= "sunken")
         self.summary_label.place(relx= 0.9, rely= 0.1, anchor="ne")
 
-        #button to manage items
+        #button to open the cart view
         self.manage_items_button = tk.Button(root, text = "Open Cart", command = self.open_cart_view, state = "disabled")
         self.manage_items_button.place(relx = 0.5, rely= 0.8, anchor = "center")
         
@@ -109,15 +110,18 @@ class MainWindow(BaseWindow):
         total_label.pack()
 
     def open_cart_view(self):
+        #opens cartview window
         CartView(self.root, self.cart, self)
         self.manage_items_button.config(state = tk.DISABLED)
 
     def reenable_cart_button(self):
+        #used to reenable to open cart button, when the cart is closed.
         self.manage_items_button.config(state = tk.NORMAL)
         self.checkout_button.place(relx = 0.9, rely = 0.5, anchor = "center")
         self.checkout_button.config (state = tk.NORMAL)
 
     def open_checkout(self):
+        #opens the checkout menu
         summary_text = self.summary_label.cget("text")
         
         CheckoutWindow(self.root, self.cart, summary_text, self.summary_mode)
@@ -146,6 +150,7 @@ class DeliveryWindow(BaseWindow):
         save_button.pack(pady=10)
 
     def save_address(self):
+        #saves the info entered in the delivery window
         street= self.street_entry.get()
         city= self.city_entry.get()
         zip_code= self.zip_entry.get()
@@ -183,6 +188,7 @@ class PickupWindow(BaseWindow):
         save_button.pack(pady=10)
 
     def save_reference(self):
+        #saves the info entered in the pickup window
         contact_number= self.contact_number_entry.get()
         name_on_order = self.name_on_order_entry.get()
         
@@ -202,12 +208,12 @@ class PickupWindow(BaseWindow):
 
 class CheckoutWindow(tk.Toplevel):
     def __init__(self,root,cart,summary_text, summary_mode):
+        #defines the Checkout window
         super().__init__(root)
         self.title("Checkout")
         self.geometry("400x500")
 
         tk.Label(self, text = "Order Summary", font = ("Arial",16)).pack(pady=10)
-
 
         summary_label = tk.Label(self, text =summary_text)
         summary_label.pack(pady=5)
@@ -217,15 +223,12 @@ class CheckoutWindow(tk.Toplevel):
         tax = subtotal *0.07
         total = subtotal + tax 
 
-
         for price, name, note, _ in cart:
             display_text = f"{name} - ${price:.2f}"
             if note:
                 display_text += f" (Note: {note})"
             item_label = tk.Label(self, text = display_text)
             item_label.pack()
-
-        
 
         #display subtotal, tax, then total
         tk.Label(self, text=f"Subtotal: ${subtotal}").pack(pady=5)
@@ -240,16 +243,18 @@ class CheckoutWindow(tk.Toplevel):
         tk.Button(self, text="Confirm Order", command=self.confirm_order).pack(pady=5)
         tk.Button(self, text="Cancel", command=self.cancel_order).pack(pady=5)
 
-
     def confirm_order(self):
+        #creates the order confirmed popup
         messagebox.showinfo("Order Confirmed", "Your order has been confirmed!")
         self.destroy()
     
     def cancel_order(self):
+        #closes the checkout menu
         self.destroy()
 
 class CartView(tk.Toplevel):
     def __init__(self, root, cart, main_window):
+        #defines the cart view window
         super().__init__(root)
         self.title("Cart View")
         self.geometry("400x500")
@@ -287,15 +292,18 @@ class CartView(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def on_close(self):
+        #called when the cart view window is closed, reenables the open cart button, creates the cart overview on the main menu
         self.main_window.reenable_cart_button()
         self.main_window.create_overview()
         self.destroy()
 
     def update_items(self):
+        #updates the items in the over view
         for widget in self.content_frame.winfo_children():
             widget.destroy()
         self.update_cart()
     def update_cart(self):
+        #updates the cart
         for widget in self.content_frame.winfo_children():
             widget.destroy()  # Clear existing items
 
@@ -313,39 +321,42 @@ class CartView(tk.Toplevel):
         self.total_label.config(text=f"Total: ${self.total:.2f}")
 
     def open_add_to_cart(self):
+        #opens the add to cart window
         AddToCart(self,self)
     
     def remove_item(self, item_id):
+        #removes an item from the cart
         self.cart_with_ids = [item for item in self.cart_with_ids if item[3] != item_id]
         self.update_items()
         self.main_window.cart = [item for i, item in enumerate(self.main_window.cart) if i != item_id]
         self.main_window.create_overview()
 
     def add_item_to_cart(self, item_name, price, note, item_id):
+        #adds an item to the cart
         self.cart_with_ids.append((price, item_name, note, item_id))
         self.update_items()
         self.main_window.cart.append((price, item_name, note, item_id))
         self.main_window.create_overview()
 
-
 class AddToCart(tk.Toplevel):
+    #defines the addtocart window
     def __init__(self, root, cart_view):
         super().__init__(root)
         self.title("Add to Cart")
         self.geometry("500x400")
         self.cart_view = cart_view
         self.menu_items = {
-            "Margherita Pizza": (10.00, "Tomato, Mozzarella, Basil"),
-            "Pepperoni Pizza": (12.00, "Tomato, Mozzarella, Pepperoni"),
-            "Veggie Pizza": (11.00, "Tomato, Mozzarella, Bell Pepper, Onion, Mushroom"),
-            "Meat Lovers Pizza": (15.00, "Tomato, Mozzerella, Sausage, Ham, Bacon, Pepperoni, Ground Beef" ),
-            "Buffalo Chicken Pizza": (14.00, "Buffalo-ranch, Mozzerlla, Onion, Chicken"),
-            "Philly Cheesesteak Pizza": (14.00, "Ranch, Mozzerella, 3 Cheese, Steak, Green Peppers, Onions"),
             "6 Cheese Pizza" : (11.00, "Tomato, Parmesean, Romano, Mozzerella, Provolone, Fontina, Asiago"),
-            "Burger Pizza" : (13.00, "'Burger Sauce', Mozzerella, Beef, Pickle, Tomato"),
-            "The Works" : (18.00, "Tomato, Mozzerella, Italian Sausage, Canadian Bacon, Mushroom, Onion, Green Pepper, Black Olive, Pepperoni"),
             "BBQ Chicken Pizza" : (14.00, "BBQ, Mozzerella, Chicken, Bacon, Onion"),
-            "Hawaiian Pizza" : (12.00, "Tomato, Mozzerella, Canadian Bacon, Bacon, Pineapple, 3 Cheese")
+            "Buffalo Chicken Pizza": (14.00, "Buffalo-ranch, Mozzerlla, Onion, Chicken"),
+            "Burger Pizza" : (13.00, "'Burger Sauce', Mozzerella, Beef, Pickle, Tomato"),
+            "Hawaiian Pizza" : (12.00, "Tomato, Mozzerella, Canadian Bacon, Bacon, Pineapple, 3 Cheese"),
+            "Margherita Pizza": (10.00, "Tomato, Mozzarella, Basil"),
+            "Meat Lovers Pizza": (15.00, "Tomato, Mozzerella, Sausage, Ham, Bacon, Pepperoni, Ground Beef" ),
+            "Pepperoni Pizza": (12.00, "Tomato, Mozzarella, Pepperoni"),
+            "Philly Cheesesteak Pizza": (14.00, "Ranch, Mozzerella, 3 Cheese, Steak, Green Peppers, Onions"),
+            "The Works" : (18.00, "Tomato, Mozzerella, Italian Sausage, Canadian Bacon, Mushroom, Onion, Green Pepper, Black Olive, Pepperoni"),
+            "Veggie Pizza": (11.00, "Tomato, Mozzarella, Bell Pepper, Onion, Mushroom"),
         }
 
         self.frame = tk.Frame(self)
